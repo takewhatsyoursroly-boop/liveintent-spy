@@ -50,3 +50,17 @@ def test_ocr_skips_already_done(db, monkeypatch):
     n = ocr_pending_creatives(db, limit=10)
     assert n == 0
     assert called == []
+
+def test_retry_unresolved_creatives(db, monkeypatch):
+    a = Advertiser(domain="a.com"); db.add(a); db.commit()
+    c1 = Creative(advertiser_id=a.id, creative_hash="h1", screenshot_path="/x", click_tracker_url="http://t1")
+    c2 = Creative(advertiser_id=a.id, creative_hash="h2", screenshot_path="/x", click_tracker_url="http://t2", final_landing_url="https://done.com/x", final_landing_url_resolved_at=datetime.now(timezone.utc))
+    db.add_all([c1, c2]); db.commit()
+    monkeypatch.setattr("liveintent_scraper.resolve.resolve_final_url", lambda u: "https://newchapter.com/lp")
+    monkeypatch.setattr("liveintent_scraper.resolve.extract_advertiser_domain", lambda u: "newchapter.com")
+    from liveintent_enrichment.jobs import retry_unresolved_creatives
+    n = retry_unresolved_creatives(db, limit=10)
+    assert n == 1
+    db.refresh(c1); db.refresh(c2)
+    assert c1.final_landing_url == "https://newchapter.com/lp"
+    assert c2.final_landing_url == "https://done.com/x"  # untouched

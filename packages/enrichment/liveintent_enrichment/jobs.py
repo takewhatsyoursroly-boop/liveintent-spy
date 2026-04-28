@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import httpx
 import structlog
@@ -60,4 +60,30 @@ def ocr_pending_creatives(session: Session, *, limit: int = 50) -> int:
             c.headline = text
             session.flush()
             n += 1
+    return n
+
+def retry_unresolved_creatives(session: Session, *, limit: int = 50, max_age_days: int = 7) -> int:
+    """Retry click-tracker resolution for creatives where final_landing_url is null
+    and the creative is younger than max_age_days. Returns count successfully resolved."""
+    from liveintent_scraper.resolve import resolve_final_url, extract_advertiser_domain
+    cutoff = datetime.now(timezone.utc) - timedelta(days=max_age_days)
+    pending = session.scalars(
+        select(Creative)
+        .where(Creative.final_landing_url.is_(None))
+        .where(Creative.first_seen_at >= cutoff)
+        .limit(limit)
+    ).all()
+    n = 0
+    for c in pending:
+        final = resolve_final_url(c.click_tracker_url)
+        if not final:
+            continue
+        domain = extract_advertiser_domain(final)
+        if not domain:
+            continue
+        c.final_landing_url = final
+        c.final_landing_url_resolved_at = datetime.now(timezone.utc)
+        # advertiser_id was set at first capture; we don't change it on retry
+        session.flush()
+        n += 1
     return n
