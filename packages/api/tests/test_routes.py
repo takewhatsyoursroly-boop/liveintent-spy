@@ -62,3 +62,16 @@ def test_admin_override_vertical_sticks(client):
 def test_admin_override_invalid_vertical(client):
     r = client.post("/admin/advertisers/a.com/vertical", headers=H, json={"vertical": "bogus"})
     assert r.status_code == 400
+
+def test_digest_today(client):
+    r = client.get("/digest/today", headers=H)
+    assert r.status_code == 200
+    body = r.json()
+    assert "supplements" in body  # from fixture
+
+def test_digest_run_returns_ok(client, monkeypatch):
+    monkeypatch.setattr("liveintent_api.routes.digest.TelegramClient",
+                        lambda: type("T", (), {"send_message": lambda self, m: "fake-msg-id"})())
+    r = client.post("/digest/run?window_hours=24", headers=H)
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
