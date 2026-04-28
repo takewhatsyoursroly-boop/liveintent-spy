@@ -51,3 +51,14 @@ def test_publisher_detail(client):
     r = client.get("/publishers/p.com", headers=H)
     assert r.status_code == 200
     assert r.json()["top_advertisers"][0]["domain"] == "a.com"
+
+def test_admin_override_vertical_sticks(client):
+    r = client.post("/admin/advertisers/a.com/vertical", headers=H, json={"vertical": "finance"})
+    assert r.status_code == 200
+    detail = client.get("/advertisers/a.com", headers=H).json()
+    assert detail["vertical"] == "finance"
+    assert detail["vertical_source"] == "manual"
+
+def test_admin_override_invalid_vertical(client):
+    r = client.post("/admin/advertisers/a.com/vertical", headers=H, json={"vertical": "bogus"})
+    assert r.status_code == 400
