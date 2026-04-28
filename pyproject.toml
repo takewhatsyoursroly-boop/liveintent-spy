@@ -1,0 +1,18 @@
+[project]
+name = "liveintent-spy"
+version = "0.1.0"
+requires-python = ">=3.12"
+
+[tool.uv.workspace]
+members = ["packages/*", "cli"]
+
+[tool.uv.sources]
+liveintent-shared = { workspace = true }
+liveintent-scraper = { workspace = true }
+liveintent-enrichment = { workspace = true }
+liveintent-api = { workspace = true }
+liveintent-cli = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["packages/*/tests"]
+asyncio_mode = "auto"
