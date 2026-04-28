@@ -75,3 +75,28 @@ def test_digest_run_returns_ok(client, monkeypatch):
     r = client.post("/digest/run?window_hours=24", headers=H)
     assert r.status_code == 200
     assert r.json()["ok"] is True
+
+def test_telegram_webhook_topadvertisers(client, monkeypatch):
+    sent = []
+    class FakeTg:
+        def __init__(self, *a, **kw): pass
+        def send_message(self, msg): sent.append(msg); return "id1"
+    monkeypatch.setattr("liveintent_api.routes.telegram.TelegramClient", FakeTg)
+    r = client.post("/telegram/webhook", json={
+        "update_id": 1,
+        "message": {"chat": {"id": 999}, "text": "/topadvertisers 1"},
+    })
+    assert r.status_code == 200
+    assert sent and "supplements" in sent[0].lower()
+
+def test_telegram_webhook_unknown_command(client, monkeypatch):
+    sent = []
+    class FakeTg:
+        def __init__(self, *a, **kw): pass
+        def send_message(self, msg): sent.append(msg); return "id"
+    monkeypatch.setattr("liveintent_api.routes.telegram.TelegramClient", FakeTg)
+    r = client.post("/telegram/webhook", json={
+        "update_id": 1, "message": {"chat": {"id": 999}, "text": "hello"}
+    })
+    assert r.status_code == 200
+    assert "/topadvertisers" in sent[0]
