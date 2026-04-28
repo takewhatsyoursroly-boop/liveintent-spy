@@ -1,0 +1,18 @@
+[Unit]
+Description=LiveIntent Spy — Scraper Worker
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=liveintent
+WorkingDirectory=/opt/liveintent-spy
+EnvironmentFile=/opt/liveintent-spy/.env
+ExecStart=/opt/liveintent-spy/.venv/bin/python -m liveintent_scraper.main
+Restart=on-failure
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
