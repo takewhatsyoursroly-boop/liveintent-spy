@@ -10,13 +10,13 @@ from liveintent_shared.models import Publisher
 def add_publisher(domain: str, email: str, name: str | None):
     """Register a publisher and its seed email alias."""
     with session_scope() as s:
-        existing = s.scalar(select(Publisher).where(Publisher.domain == domain))
+        existing = s.scalar(select(Publisher).where(Publisher.seed_email_address == email))
         if existing:
-            click.echo(f"Publisher {domain} already exists (id={existing.id})")
+            click.echo(f"Publisher row already exists for {email} (id={existing.id}, domain={existing.domain})")
             return
         p = Publisher(domain=domain, name=name, seed_email_address=email)
         s.add(p); s.flush()
-        click.echo(f"Created publisher {domain} (id={p.id}). Subscribe {email} to the newsletter and confirm double-opt-in.")
+        click.echo(f"Created publisher row {domain} → {email} (id={p.id}).")
 
 @click.command("list-publishers")
 def list_publishers():
