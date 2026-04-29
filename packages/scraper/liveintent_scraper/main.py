@@ -85,7 +85,10 @@ def _now():
 async def run_once(data_dir: Path) -> None:
     settings = get_settings()
     last_uid = _load_last_uid()
-    with IMAPClient(settings.imap_host, ssl=True) as client:
+    imap_kwargs = {"ssl": settings.imap_ssl}
+    if settings.imap_port:
+        imap_kwargs["port"] = settings.imap_port
+    with IMAPClient(settings.imap_host, **imap_kwargs) as client:
         client.login(settings.imap_user, settings.imap_pass)
         uids = fetch_new_uids(client, last_uid)
         if not uids:

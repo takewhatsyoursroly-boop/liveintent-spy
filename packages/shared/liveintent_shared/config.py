@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     imap_host: str
     imap_user: str
     imap_pass: str
+    imap_ssl: bool = True
+    imap_port: int = 0  # 0 = library default (993 SSL, 143 plain)
 
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
