@@ -1,9 +1,10 @@
 import gzip
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from email import message_from_bytes
 from email.message import Message
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from imapclient import IMAPClient
 import structlog
@@ -40,8 +41,30 @@ def parse_email_bytes(raw: bytes) -> ParsedEmail:
         html_body=_extract_html(msg),
     )
 
-def route_email_to_publisher(session: Session, to_addr: str) -> Publisher | None:
-    return session.scalar(select(Publisher).where(Publisher.seed_email_address == to_addr))
+_FROM_EMAIL_RE = re.compile(r"<\s*([^<>\s]+@[^<>\s]+)\s*>|([^<>\s]+@[^<>\s]+)")
+
+
+def _extract_email_address(header_value: str) -> str | None:
+    """Pull the bare email out of a 'Display Name <local@domain>' header."""
+    if not header_value:
+        return None
+    m = _FROM_EMAIL_RE.search(header_value)
+    if not m:
+        return None
+    return (m.group(1) or m.group(2) or "").strip().lower()
+
+
+def route_email_to_publisher(session: Session, header_value: str) -> Publisher | None:
+    """Match incoming email to a Publisher by FROM address.
+
+    Accepts the raw From header (e.g. 'Morning Brew <crew@morningbrew.com>')
+    and matches it against Publisher.from_address (case-insensitive)."""
+    email = _extract_email_address(header_value)
+    if not email:
+        return None
+    return session.scalar(
+        select(Publisher).where(func.lower(Publisher.from_address) == email)
+    )
 
 def save_raw_html(html: str, *, data_dir: Path, imap_uid: int) -> Path:
     data_dir.mkdir(parents=True, exist_ok=True)

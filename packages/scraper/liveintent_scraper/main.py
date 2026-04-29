@@ -29,7 +29,7 @@ def _save_last_uid(uid: int) -> None:
 async def process_email(browser, raw: bytes, *, uid: int, data_dir: Path) -> None:
     parsed = parse_email_bytes(raw)
     with session_scope() as session:
-        publisher = route_email_to_publisher(session, parsed.to_addr)
+        publisher = route_email_to_publisher(session, parsed.from_addr)
         if not publisher:
             log.info("scraper.unknown_recipient", to=parsed.to_addr, uid=uid)
             return

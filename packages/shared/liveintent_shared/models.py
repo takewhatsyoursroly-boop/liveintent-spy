@@ -16,10 +16,15 @@ class Base(DeclarativeBase):
 class Publisher(Base):
     __tablename__ = "publishers"
     id: Mapped[int] = mapped_column(BigIntPK, primary_key=True)
-    # NOT unique — one publisher domain may have N persona inboxes, each is its own row.
+    # NOT unique — Brew family all share morningbrew.com but are different publishers.
     domain: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str | None] = mapped_column(String(255))
-    seed_email_address: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    # The sender address we use to identify incoming emails as belonging to this
+    # publisher (e.g. 'crew@morningbrew.com', 'marketingbrew@morningbrew.com').
+    # Unique because each newsletter sends from one address.
+    from_address: Mapped[str | None] = mapped_column(String(320), unique=True)
+    # Legacy column — kept for backward compat but no longer used for routing.
+    seed_email_address: Mapped[str | None] = mapped_column(String(320))
     subscribed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_email_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

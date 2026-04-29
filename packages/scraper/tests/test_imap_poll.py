@@ -13,12 +13,23 @@ def test_parse_email_extracts_html_and_to():
 
 def test_route_email_to_publisher_known(db_session):
     from liveintent_shared.models import Publisher
-    p = Publisher(domain="morningbrew.com", seed_email_address="r.alvarez@yourdomain.com")
+    p = Publisher(domain="morningbrew.com", from_address="crew@morningbrew.com")
     db_session.add(p); db_session.flush()
-    matched = route_email_to_publisher(db_session, "r.alvarez@yourdomain.com")
+    # Match a bare address.
+    matched = route_email_to_publisher(db_session, "crew@morningbrew.com")
+    assert matched is not None
+    assert matched.id == p.id
+    # Match a 'Display Name <email>' header.
+    matched = route_email_to_publisher(db_session, "Morning Brew <crew@morningbrew.com>")
     assert matched is not None
     assert matched.id == p.id
 
 def test_route_email_to_publisher_unknown(db_session):
-    matched = route_email_to_publisher(db_session, "stranger@somewhere.com")
+    matched = route_email_to_publisher(db_session, "Stranger <stranger@somewhere.com>")
+    assert matched is None
+
+def test_route_email_to_publisher_handles_bad_input(db_session):
+    matched = route_email_to_publisher(db_session, "")
+    assert matched is None
+    matched = route_email_to_publisher(db_session, "not-an-email-at-all")
     assert matched is None

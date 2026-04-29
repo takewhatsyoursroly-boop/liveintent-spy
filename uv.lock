@@ -9,6 +9,7 @@ members = [
     "liveintent-enrichment",
     "liveintent-scraper",
     "liveintent-shared",
+    "liveintent-signups",
     "liveintent-spy",
 ]
 
@@ -588,6 +589,31 @@ requires-dist = [
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "structlog", specifier = ">=24.4" },
+]
+
+[[package]]
+name = "liveintent-signups"
+version = "0.1.0"
+source = { editable = "packages/signups" }
+dependencies = [
+    { name = "beautifulsoup4" },
+    { name = "click" },
+    { name = "httpx" },
+    { name = "imapclient" },
+    { name = "liveintent-shared" },
+    { name = "playwright" },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beautifulsoup4", specifier = ">=4.12" },
+    { name = "click", specifier = ">=8.1" },
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "imapclient", specifier = ">=3.0" },
+    { name = "liveintent-shared", editable = "packages/shared" },
+    { name = "playwright", specifier = ">=1.49" },
     { name = "structlog", specifier = ">=24.4" },
 ]
 

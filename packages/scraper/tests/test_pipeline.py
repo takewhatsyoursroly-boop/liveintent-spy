@@ -13,7 +13,7 @@ async def test_pipeline_records_impression(monkeypatch, tmp_path):
     # Use shared in-process DB, monkeypatch session_scope
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
-    p = Publisher(domain="morningbrew.com", seed_email_address="r.alvarez@yourdomain.com")
+    p = Publisher(domain="morningbrew.com", from_address="news@morningbrew.com")
     with Session(engine) as s:
         s.add(p); s.commit(); pub_id = p.id
 
