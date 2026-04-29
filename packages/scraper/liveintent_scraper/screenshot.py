@@ -1,13 +1,12 @@
 import hashlib
 from pathlib import Path
 from playwright.async_api import Page
+from .selectors import LIVEINTENT_SELECTORS
 
 async def screenshot_slot(page: Page, slot_index: int, *, out_dir: Path) -> tuple[Path, str]:
     """Screenshot the Nth LiveIntent slot in the page. Returns (path, sha256_hash).
     Raises ValueError if the slot can't be located."""
-    locators = page.locator(
-        'a[href*="li/r/"], a[href*="track.liveintent.com"], a[href*="liveintent.com/r/"]'
-    )
+    locators = page.locator(", ".join(LIVEINTENT_SELECTORS))
     count = await locators.count()
     if slot_index >= count:
         raise ValueError(f"slot_index {slot_index} out of range (found {count})")
