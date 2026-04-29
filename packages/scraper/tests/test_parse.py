@@ -30,4 +30,22 @@ def test_slot_records_selector_used():
         'a[href*="li/r/"]',
         'a[href*="track.liveintent.com"]',
         'a[href*="liveintent.com/r/"]',
+        'brand:zeta-text',
     )
+
+def test_real_cnet_style_finds_zeta_ads_only():
+    """Real CNET emails wrap LiveIntent ads in CNET tracker URLs and identify
+    them via 'Powered by ZETA' branding. Editorial content + 'SPONSORED BY ...'
+    publisher-direct sponsorships must NOT match."""
+    slots = find_ad_slots(_load("cnet_real_style.html"))
+    assert len(slots) == 2, f"expected 2 zeta ads, got {len(slots)}"
+    # Both slots should be detected via brand text, not URL.
+    assert all(s.selector_used == "brand:zeta-text" for s in slots)
+    # Make sure both expected advertisers are wrapped.
+    urls = [s.click_tracker_url for s in slots]
+    assert any("omnilux" in u for u in urls)
+    assert any("bathroom" in u for u in urls)
+    # Editorial Deal-of-the-Day and "DON'T MISS" cards must NOT be picked up.
+    assert not any("kindle" in u for u in urls)
+    assert not any("dontmiss" in u for u in urls)
+    assert not any("seth" in u for u in urls)
