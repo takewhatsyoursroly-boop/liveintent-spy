@@ -64,6 +64,7 @@ class Creative(Base):
     advertiser_id: Mapped[int] = mapped_column(ForeignKey("advertisers.id"), nullable=False)
     creative_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     headline: Mapped[str | None] = mapped_column(Text)
+    image_url: Mapped[str | None] = mapped_column(Text)  # raw <img src> URL extracted from email — render directly in UI when no local screenshot
     screenshot_path: Mapped[str] = mapped_column(Text, nullable=False)
     click_tracker_url: Mapped[str] = mapped_column(Text, nullable=False)
     final_landing_url: Mapped[str | None] = mapped_column(Text)

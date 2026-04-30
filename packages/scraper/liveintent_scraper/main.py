@@ -74,6 +74,7 @@ async def process_email(browser, raw: bytes, *, uid: int, data_dir: Path) -> Non
                 creative = upsert_creative(
                     session, advertiser_id=advertiser.id, creative_hash=digest,
                     screenshot_path=str(shot_path), click_tracker_url=slot.click_tracker_url,
+                    image_url=slot.image_src,
                 )
                 if final_url and not creative.final_landing_url:
                     creative.final_landing_url = final_url

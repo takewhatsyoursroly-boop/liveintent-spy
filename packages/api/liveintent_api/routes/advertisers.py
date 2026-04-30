@@ -40,6 +40,7 @@ def advertiser_detail(domain: str):
             "last_seen_at": a.last_seen_at.isoformat(),
             "creatives": [
                 {"id": c.id, "headline": c.headline, "screenshot_path": c.screenshot_path,
+                 "image_url": c.image_url, "click_tracker_url": c.click_tracker_url,
                  "final_landing_url": c.final_landing_url, "last_seen_at": c.last_seen_at.isoformat()}
                 for c in creatives
             ],

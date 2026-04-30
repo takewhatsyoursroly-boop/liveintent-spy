@@ -22,14 +22,18 @@ def upsert_advertiser(session: Session, domain: str) -> Advertiser:
     return a
 
 def upsert_creative(session: Session, *, advertiser_id: int, creative_hash: str,
-                    screenshot_path: str, click_tracker_url: str) -> Creative:
+                    screenshot_path: str, click_tracker_url: str,
+                    image_url: str | None = None) -> Creative:
     existing = session.scalar(select(Creative).where(Creative.creative_hash == creative_hash))
     if existing:
         existing.last_seen_at = datetime.now(timezone.utc)
+        if image_url and not existing.image_url:
+            existing.image_url = image_url
         return existing
     c = Creative(
         advertiser_id=advertiser_id, creative_hash=creative_hash,
         screenshot_path=screenshot_path, click_tracker_url=click_tracker_url,
+        image_url=image_url,
     )
     session.add(c)
     return c
