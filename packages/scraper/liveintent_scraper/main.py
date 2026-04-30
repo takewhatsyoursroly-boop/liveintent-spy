@@ -56,8 +56,14 @@ async def process_email(browser, raw: bytes, *, uid: int, data_dir: Path) -> Non
                         page, slot.slot_index, out_dir=data_dir / "screenshots"
                     )
                 except Exception as e:
-                    log.warning("scraper.screenshot_failed", uid=uid, slot=slot.slot_index, error=str(e))
-                    continue
+                    # Screenshot failed (pixel-only slot, forwarded email, etc.) —
+                    # record the impression anyway using a deterministic hash of
+                    # the click-tracker URL as the creative key.
+                    log.info("scraper.screenshot_skipped", uid=uid, slot=slot.slot_index,
+                             reason=str(e), selector=slot.selector_used)
+                    import hashlib as _h
+                    digest = _h.sha256(slot.click_tracker_url.encode()).hexdigest()
+                    shot_path = ""
                 final_url = resolve_final_url(slot.click_tracker_url)
                 advertiser_domain = extract_advertiser_domain(final_url) if final_url else None
                 if not advertiser_domain:
