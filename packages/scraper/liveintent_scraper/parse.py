@@ -26,6 +26,13 @@ ZETA_BRAND_RE = re.compile(
     re.IGNORECASE,
 )
 
+# LiveIntent's server-side ad embed uses `sli.<publisher>.com/imp` impression
+# pixels (e.g. sli.cnet.com/imp?s=...). The `lihide` CSS class is the
+# fallback wrapper LiveIntent injects. Either is a strong slot signal even
+# when the brand footer was stripped (e.g. forwarded emails).
+LI_PIXEL_RE = re.compile(r'sli\.[a-z0-9-]+\.com/imp\?', re.IGNORECASE)
+LIHIDE_CLASS_RE = re.compile(r'\b[a-zA-Z0-9_-]*lihide\b', re.IGNORECASE)
+
 
 def _enclosing_ad_anchor(node: Tag) -> Tag | None:
     """Given a node containing the brand text, walk up/back to find the <a>
@@ -76,6 +83,41 @@ def find_ad_slots(html: str) -> list[AdSlot]:
             continue
         seen_anchors.add(id(a))
         slot = _make_slot(a, slot_index=len(slots), selector_used="brand:zeta-text")
+        if slot:
+            slots.append(slot)
+
+    # 1b. LiveIntent server-side embed pixel (sli.<pub>.com/imp). Each pixel
+    # marks a slot — find the nearest enclosing <a><img> (the ad creative
+    # may be sibling/parent). Useful even when brand text was stripped.
+    for img in soup.find_all("img", src=LI_PIXEL_RE):
+        a = _enclosing_ad_anchor(img)
+        if a is None:
+            # Some emails have the pixel as a tracking-only element with no
+            # enclosing anchor (e.g. forwarded emails). Record an "unattributed"
+            # slot so digest still shows publisher activity.
+            slots.append(AdSlot(
+                slot_index=len(slots),
+                click_tracker_url=str(img.get("src", "")),
+                image_src=str(img.get("src", "")),
+                selector_used="pixel:sli-imp-no-anchor",
+            ))
+            continue
+        if id(a) in seen_anchors:
+            continue
+        seen_anchors.add(id(a))
+        slot = _make_slot(a, slot_index=len(slots), selector_used="pixel:sli-imp")
+        if slot:
+            slots.append(slot)
+
+    # 1c. Elements with the lihide CSS class are LiveIntent's hide-wrappers.
+    for el in soup.find_all(class_=LIHIDE_CLASS_RE):
+        a = _enclosing_ad_anchor(el)
+        if a is None:
+            continue
+        if id(a) in seen_anchors:
+            continue
+        seen_anchors.add(id(a))
+        slot = _make_slot(a, slot_index=len(slots), selector_used="class:lihide")
         if slot:
             slots.append(slot)
 
