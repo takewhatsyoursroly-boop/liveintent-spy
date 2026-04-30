@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from liveintent_shared.models import Base, Advertiser, Creative
 from liveintent_shared.enums import Vertical, VerticalSource
 from liveintent_enrichment.jobs import (
-    classify_pending_advertisers, ocr_pending_creatives
+    classify_pending_advertisers, ocr_pending_creatives, cache_pending_creative_images
 )
 
 @pytest.fixture
@@ -50,6 +50,48 @@ def test_ocr_skips_already_done(db, monkeypatch):
     n = ocr_pending_creatives(db, limit=10)
     assert n == 0
     assert called == []
+
+class _FakeResp:
+    def __init__(self, content: bytes, status: int = 200, ct: str = "image/png"):
+        self.content = content
+        self.status_code = status
+        self.headers = {"content-type": ct}
+
+class _FakeClient:
+    def __init__(self, mapping):  # mapping: url -> _FakeResp
+        self._mapping = mapping
+    def __enter__(self): return self
+    def __exit__(self, *a): return False
+    def get(self, url):
+        if url not in self._mapping:
+            raise RuntimeError(f"unmocked url {url}")
+        return self._mapping[url]
+
+def test_cache_pending_creative_images_caches_and_skips(db, monkeypatch, tmp_path):
+    a = Advertiser(domain="a.com"); db.add(a); db.commit()
+    real = Creative(advertiser_id=a.id, creative_hash="h1", screenshot_path="", click_tracker_url="http://t1", image_url="https://cdn.example/img.png")
+    pixel = Creative(advertiser_id=a.id, creative_hash="h2", screenshot_path="", click_tracker_url="http://t2", image_url="https://sli.x.com/imp?p=1")
+    already = Creative(advertiser_id=a.id, creative_hash="h3", screenshot_path="/already/cached.png", click_tracker_url="http://t3", image_url="https://cdn.example/other.png")
+    no_url = Creative(advertiser_id=a.id, creative_hash="h4", screenshot_path="", click_tracker_url="http://t4", image_url=None)
+    db.add_all([real, pixel, already, no_url]); db.commit()
+
+    big_png = b"\x89PNG\r\n\x1a\n" + b"x" * 4000  # >1KB, valid-looking
+    tiny_pixel = b"GIF89a" + b"\x00" * 40         # 1x1 tracker
+    fake = _FakeClient({
+        "https://cdn.example/img.png": _FakeResp(big_png, ct="image/png"),
+        "https://sli.x.com/imp?p=1": _FakeResp(tiny_pixel, ct="image/gif"),
+    })
+    monkeypatch.setattr("liveintent_enrichment.jobs.httpx.Client", lambda *a, **kw: fake)
+
+    n = cache_pending_creative_images(db, limit=50, data_dir=tmp_path)
+    assert n == 1
+    db.refresh(real); db.refresh(pixel); db.refresh(already); db.refresh(no_url)
+    out = tmp_path / "screenshots" / "cached" / f"{real.id}.png"
+    assert out.exists() and out.read_bytes() == big_png
+    assert real.screenshot_path == str(out)
+    assert pixel.screenshot_path == ""           # tiny → skipped
+    assert already.screenshot_path == "/already/cached.png"  # untouched
+    assert no_url.screenshot_path == ""          # null image_url → skipped
 
 def test_retry_unresolved_creatives(db, monkeypatch):
     a = Advertiser(domain="a.com"); db.add(a); db.commit()

@@ -12,6 +12,8 @@ router = APIRouter(prefix="/creatives", tags=["creatives"], dependencies=[Depend
 def creative_screenshot(creative_id: int):
     with session_scope() as s:
         c = s.scalar(select(Creative).where(Creative.id == creative_id))
-        if not c or not Path(c.screenshot_path).exists():
+        if not c or not c.screenshot_path or not Path(c.screenshot_path).exists():
             raise HTTPException(404)
-        return FileResponse(c.screenshot_path, media_type="image/png")
+        # Starlette infers media_type from the file extension when omitted —
+        # cached images may be png/jpg/gif/webp/avif, not just png.
+        return FileResponse(c.screenshot_path)
