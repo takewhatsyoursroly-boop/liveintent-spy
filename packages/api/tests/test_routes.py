@@ -89,6 +89,28 @@ def test_telegram_webhook_topadvertisers(client, monkeypatch):
     assert r.status_code == 200
     assert sent and "supplements" in sent[0].lower()
 
+def test_stats_cache(client):
+    # add a couple more creatives to exercise the buckets
+    import liveintent_shared.db as db
+    from liveintent_shared.models import Advertiser, Creative
+    with Session(db.get_engine()) as s:
+        a = s.query(Advertiser).filter_by(domain="a.com").one()
+        s.add_all([
+            Creative(advertiser_id=a.id, creative_hash="h2", screenshot_path="/data/screenshots/cached/2.jpg", click_tracker_url="http://t2", image_url="https://x/2.jpg"),
+            Creative(advertiser_id=a.id, creative_hash="h3", screenshot_path="", click_tracker_url="http://t3", image_url="https://x/3.jpg"),
+            Creative(advertiser_id=a.id, creative_hash="h4", screenshot_path="", click_tracker_url="http://t4", image_url=None),
+        ])
+        s.commit()
+    r = client.get("/stats/cache", headers=H)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["cached"] == 1
+    assert body["still_empty"] == 1
+    assert body["no_image_url"] == 2  # fixture creative + h4
+    assert body["total"] == 4
+    assert body["cached_ratio"] == 0.25
+    assert body["top_failing_advertisers"][0] == {"domain": "a.com", "missing": 1}
+
 def test_telegram_webhook_unknown_command(client, monkeypatch):
     sent = []
     class FakeTg:
