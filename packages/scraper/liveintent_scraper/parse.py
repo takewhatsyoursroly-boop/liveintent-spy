@@ -87,20 +87,12 @@ def find_ad_slots(html: str) -> list[AdSlot]:
             slots.append(slot)
 
     # 1b. LiveIntent server-side embed pixel (sli.<pub>.com/imp). Each pixel
-    # marks a slot — find the nearest enclosing <a><img> (the ad creative
-    # may be sibling/parent). Useful even when brand text was stripped.
+    # marks a slot — find the nearest enclosing <a><img>. If the pixel has no
+    # enclosing creative anchor, skip it: the click destination would be the
+    # pixel URL itself, which resolves to LiveIntent infrastructure, not an ad.
     for img in soup.find_all("img", src=LI_PIXEL_RE):
         a = _enclosing_ad_anchor(img)
         if a is None:
-            # Some emails have the pixel as a tracking-only element with no
-            # enclosing anchor (e.g. forwarded emails). Record an "unattributed"
-            # slot so digest still shows publisher activity.
-            slots.append(AdSlot(
-                slot_index=len(slots),
-                click_tracker_url=str(img.get("src", "")),
-                image_src=str(img.get("src", "")),
-                selector_used="pixel:sli-imp-no-anchor",
-            ))
             continue
         if id(a) in seen_anchors:
             continue

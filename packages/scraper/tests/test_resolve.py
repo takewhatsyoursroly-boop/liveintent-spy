@@ -42,3 +42,12 @@ def test_advertiser_domain_extracts_etld_plus_one():
     assert extract_advertiser_domain("https://www.newchapter.com/products/x?u=y") == "newchapter.com"
     assert extract_advertiser_domain("https://shop.example.co.uk/p") == "example.co.uk"
     assert extract_advertiser_domain("invalid") is None
+
+def test_advertiser_domain_blocks_liveintent_infra():
+    """LiveIntent's own redirect/AdChoices/pixel domains are never real advertisers.
+    A click resolving here means we picked up a privacy link or pixel-only slot."""
+    assert extract_advertiser_domain("https://i6.liadm.com/s/section/124305700") is None
+    assert extract_advertiser_domain("https://www.liveintent.com/ad-choices/?utm=x") is None
+    assert extract_advertiser_domain("https://c.licasd.com/ads/abc/def.jpeg") is None
+    assert extract_advertiser_domain("https://he.lijit.com/merge?pid=8105") is None
+    assert extract_advertiser_domain("https://thrtle.com/3012?sha256=abc") is None
